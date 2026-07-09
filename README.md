@@ -12,7 +12,6 @@
 ai-cli-assistant/
 ├── .ai-cli.json          # 项目配置文件（含 API Key，已加入 .gitignore）
 ├── package.json          # npm workspace 根配置
-├── start.bat             # Windows 一键启动
 ├── README.md
 └── packages/
     ├── shared/           # 共享类型定义 (Message, StreamEvent, ModelConfig...)
@@ -41,7 +40,7 @@ ai-cli-assistant/
 
 ```bash
 # 从 GitHub 克隆项目
-git clone git@github.com:ZHU123-Develop/ai-cli-assistant.git
+git clone git@github.com:zhu-app/ai-cli-assistant.git
 cd ai-cli-assistant
 
 # 安装依赖并编译
@@ -90,8 +89,6 @@ ai-cli --provider custom --model glm-4-flash \
 ```bash
 # 配置好后直接运行（自动读取 .ai-cli.json）
 ai-cli
-
-# 或在项目目录双击 start.bat（Windows）
 
 # 或不注册全局命令，手动运行
 node packages/cli/dist/index.js
@@ -174,7 +171,7 @@ AI 可通过以下 11 个工具操作你的本地环境：
 | | `git_log` | 查看提交历史 |
 | | `git_diff` | 查看差异（支持暂存区） |
 | | `git_commit` | 添加并提交更改 |
-| **终端** | `shell_exec` | 执行 Shell 命令 |
+| **终端** | `shell_exec` | 执行 Shell 命令（含危险命令黑名单保护） |
 | | `grep_search` | 正则搜索文件内容 |
 
 ## 架构原理
