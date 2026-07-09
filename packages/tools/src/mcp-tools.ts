@@ -330,9 +330,34 @@ const gitCommitTool: MCPTool = {
 
 // ==================== Shell 工具 ====================
 
+/** 危险命令黑名单，禁止 AI 自动执行 */
+const BLOCKED_COMMANDS: string[] = [
+  'rm -rf', 'rm -rf /', 'rm -rf ~', 'rm -rf .',
+  'del /f /s /q', 'rd /s /q',
+  'format', 'fdisk', 'mkfs',
+  'shutdown', 'reboot', 'halt', 'poweroff',
+  'sudo', 'su ', 'chmod 777', 'chown',
+  '> /dev/sda', '> /dev/sdb',
+  'dd if=', ':(){ :|:& };:', 'forkbomb',
+  'wget ', 'curl ', 'nc ', 'telnet ',
+  'eval ', 'exec ', 'source ~',
+  '>|', '| sh', '| bash', '| cmd',
+];
+
+function isCommandBlocked(command: string): string | null {
+  const lower = command.toLowerCase().trim();
+  // 检查是否以危险命令开头
+  for (const blocked of BLOCKED_COMMANDS) {
+    if (lower.startsWith(blocked)) {
+      return blocked;
+    }
+  }
+  return null;
+}
+
 const shellExecTool: MCPTool = {
   name: 'shell_exec',
-  description: '在终端中执行 Shell 命令。仅限只读或安全的命令。',
+  description: '在终端中执行 Shell 命令。仅限安全的命令。',
   parameters: {
     type: 'object',
     properties: {
@@ -346,6 +371,18 @@ const shellExecTool: MCPTool = {
     const command = String(args.command);
     const cwd = args.cwd ? String(args.cwd) : process.cwd();
     const timeout = args.timeout ? Number(args.timeout) : 30000;
+
+    // 安全检查：禁止危险命令
+    const blocked = isCommandBlocked(command);
+    if (blocked) {
+      return {
+        id: '',
+        name: 'shell_exec',
+        success: false,
+        output: '',
+        error: `命令被安全策略拦截（匹配黑名单: "${blocked}"）。不允许执行危险命令。`,
+      };
+    }
 
     try {
       const { stdout, stderr } = await execAsync(command, { cwd, timeout, maxBuffer: 1024 * 1024 });

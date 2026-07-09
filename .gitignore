@@ -19,3 +19,6 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Claude 项目配置
+CLAUDE.md

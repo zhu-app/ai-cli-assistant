@@ -10,9 +10,8 @@ import { AIServer } from '@ai-cli/server';
 import { ServerClient, CLICommand } from './client';
 import { readConfig, writeConfig, getConfigPath } from './config-store';
 
-// 运行时动态导入，绕过 CJS/ESM 类型问题
 const chalk = require('chalk');
-const inquirer = require('inquirer').default || require('inquirer');
+const inquirer = require('inquirer');
 const ora = require('ora');
 
 const VERSION = '1.0.0';
