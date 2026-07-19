@@ -23,10 +23,10 @@ const VERSION = '1.0.0';
 function getBanner(): string {
   return `
 ${chalk.bold.cyan('╔══════════════════════════════════════════╗')}
-${chalk.bold.cyan('║')}${chalk.bold.white(`      AI CLI Assistant v${VERSION}              `)}${chalk.bold.cyan('║')}
-${chalk.bold.cyan('║')}${chalk.dim('  纯终端交互式 AI 编程助手                   ')}${chalk.bold.cyan('║')}
-${chalk.bold.cyan('║')}${chalk.dim('  代码生成 / 重构 / Bug 排查                  ')}${chalk.bold.cyan('║')}
-${chalk.bold.cyan('║')}${chalk.dim('  MCP 协议 · 文件 · Git · 终端                ')}${chalk.bold.cyan('║')}
+${chalk.bold.cyan('║')}${chalk.bold.white(`         AI CLI Assistant v${VERSION}          `)}${chalk.bold.cyan('║')}
+${chalk.bold.cyan('║')}${chalk.dim('         纯终端交互式 AI 编程助手         ')}${chalk.bold.cyan('║')}
+${chalk.bold.cyan('║')}${chalk.dim('        代码生成 / 重构 / Bug 排查        ')}${chalk.bold.cyan('║')}
+${chalk.bold.cyan('║')}${chalk.dim('       MCP 协议 · 文件 · Git · 终端       ')}${chalk.bold.cyan('║')}
 ${chalk.bold.cyan('╚══════════════════════════════════════════╝')}
 `;
 }
