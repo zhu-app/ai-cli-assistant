@@ -6,7 +6,7 @@ import WebSocket from 'ws';
 import { StreamEvent, ModelConfig } from '@ai-cli/shared';
 
 export interface CLICommand {
-  type: 'init' | 'message' | 'get_tools' | 'set_config' | 'reset' | 'ping';
+  type: 'init' | 'message' | 'system' | 'get_tools' | 'set_config' | 'reset' | 'ping';
   content?: string;
   conversationId?: string;
   config?: Partial<ModelConfig>;
@@ -16,7 +16,12 @@ export class ServerClient {
   private ws: WebSocket | null = null;
   private connected = false;
   private conversationId = '';
+  private silent: boolean;
   private messageListeners: Set<(event: StreamEvent) => void> = new Set();
+
+  constructor(silent = false) {
+    this.silent = silent;
+  }
 
   async connect(url: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -24,7 +29,7 @@ export class ServerClient {
 
       this.ws.on('open', () => {
         this.connected = true;
-        console.error(`[ai-cli] 已连接到 ${url}`);
+        if (!this.silent) console.error(`[ai-cli] 已连接到 ${url}`);
         resolve();
       });
 
@@ -74,6 +79,10 @@ export class ServerClient {
 
   isConnected(): boolean {
     return this.connected;
+  }
+
+  getConversationId(): string {
+    return this.conversationId;
   }
 
   close(): void {

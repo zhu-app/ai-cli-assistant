@@ -4,11 +4,15 @@
 
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import * as os from 'os';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { ToolCall, ToolResult } from '@ai-cli/shared';
 
 const execAsync = promisify(exec);
+
+/** 检测当前是否是 Windows 平台 */
+const isWindows = os.platform() === 'win32';
 
 // --- 单个工具定义 ---
 export interface MCPTool {
@@ -421,18 +425,35 @@ const grepSearchTool: MCPTool = {
     const globPattern = args.glob ? String(args.glob) : '';
     const caseSensitive = args.case_sensitive !== 'false';
 
-    const flags = caseSensitive ? '' : '-i';
-    const globArg = globPattern ? `--glob ${globPattern}` : '';
-
     try {
-      const { stdout } = await execAsync(
-        `grep ${flags} -r -n ${globArg} -- "${pattern}" "${searchPath}"`,
-        { timeout: 15000 }
-      );
-      return { id: '', name: 'grep_search', success: true, output: stdout || '未找到匹配' };
+      let stdout: string;
+      if (isWindows) {
+        // Windows 使用 findstr
+        const caseFlag = caseSensitive ? '' : '/I';
+        const fileFilter = globPattern || '*';
+        const cmd = `findstr /S /N ${caseFlag} /C:"${pattern.replace(/"/g, '""')}" "${searchPath}\\${fileFilter}" 2>nul`;
+        const result = await execAsync(cmd, { timeout: 15000, maxBuffer: 1024 * 1024 });
+        stdout = result.stdout || '未找到匹配';
+        stdout = stdout.split('\n')
+          .map(l => l.trim())
+          .filter(l => l)
+          .join('\n');
+      } else {
+        const flags = caseSensitive ? '' : '-i';
+        const globArg = globPattern ? `--glob ${globPattern}` : '';
+        const result = await execAsync(
+          `grep ${flags} -r -n ${globArg} -- "${pattern}" "${searchPath}"`,
+          { timeout: 15000, maxBuffer: 1024 * 1024 }
+        );
+        stdout = result.stdout || '未找到匹配';
+      }
+      return { id: '', name: 'grep_search', success: true, output: stdout };
     } catch (err: unknown) {
       const e = err as { stdout?: string; status?: number; message?: string };
-      if (e.status === 1 && e.stdout) {
+      if (!isWindows && e.status === 1 && e.stdout) {
+        return { id: '', name: 'grep_search', success: true, output: e.stdout };
+      }
+      if (isWindows && e.stdout) {
         return { id: '', name: 'grep_search', success: true, output: e.stdout };
       }
       return { id: '', name: 'grep_search', success: false, output: '', error: e.message || '搜索失败' };

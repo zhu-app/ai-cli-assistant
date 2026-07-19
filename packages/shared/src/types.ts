@@ -35,6 +35,7 @@ export type StreamEvent =
   | { type: 'text'; content: string }
   | { type: 'tool_call'; call: ToolCall }
   | { type: 'tool_result'; result: ToolResult }
+  | { type: 'tools'; tools: Array<{ name: string; description: string; parameters: any }> }
   | { type: 'done' }
   | { type: 'error'; error: string };
 

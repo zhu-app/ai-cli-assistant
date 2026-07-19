@@ -1,16 +1,1 @@
-{
-  "name": "@ai-cli/shared",
-  "version": "1.0.0",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch",
-    "lint": "eslint src/",
-    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "typescript": "^5.7.0"
-  }
-}
+{"name":"@ai-cli/shared","version":"1.0.0","main":"dist/index.js","types":"dist/index.d.ts","scripts":{"build":"tsc -p tsconfig.json","dev":"tsc -p tsconfig.json --watch","lint":"eslint src/","clean":"node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"","test":"node --test test/types.test.ts"},"devDependencies":{"@types/node":"^22.0.0","typescript":"^5.7.0"}}

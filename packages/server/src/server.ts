@@ -32,15 +32,28 @@ export class AIServer {
   private wss!: WebSocketServer;
   private config: ServerConfig;
   private conversations = new Map<string, Conversation>();
+  private silent: boolean;
   readonly ready: Promise<void>;
 
-  constructor(config: ServerConfig) {
+  constructor(config: ServerConfig, silent = false) {
     this.config = config;
-    this.ready = new Promise((resolve) => {
+    this.silent = silent;
+    this.ready = new Promise((resolve, reject) => {
       this.wss = new WebSocketServer({
         port: config.port || 3210,
         host: config.host || '127.0.0.1',
       }, () => resolve());
+
+      // 监听错误事件（端口冲突等），防止进程崩溃
+      this.wss.on('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+          if (!this.silent) console.error(`[ai-cli-server] 端口 ${config.port || 3210} 已被占用，请先关闭其他实例或更换端口`);
+        } else {
+          if (!this.silent) console.error(`[ai-cli-server] 服务器错误:`, err.message);
+        }
+        reject(err);
+      });
+
       this.setupHandlers();
     });
   }
@@ -48,13 +61,13 @@ export class AIServer {
   private setupHandlers(): void {
     this.wss.on('listening', () => {
       const addr = this.wss.address();
-      if (addr && typeof addr !== 'string') {
+      if (addr && typeof addr !== 'string' && !this.silent) {
         console.log(`[ai-cli-server] 监听 ws://${addr.address}:${addr.port}`);
       }
     });
 
     this.wss.on('connection', (ws: WebSocket) => {
-      console.log('[ai-cli-server] 新客户端连接');
+      if (!this.silent) console.log('[ai-cli-server] 新客户端连接');
 
       ws.on('message', async (data: Buffer) => {
         try {
@@ -69,7 +82,7 @@ export class AIServer {
       });
 
       ws.on('close', () => {
-        console.log('[ai-cli-server] 客户端断开连接');
+        if (!this.silent) console.log('[ai-cli-server] 客户端断开连接');
       });
 
       ws.on('error', (err) => {
@@ -85,6 +98,9 @@ export class AIServer {
     switch (msg.type) {
       case 'init':
         await this.handleInit(ws, msg);
+        break;
+      case 'system':
+        await this.handleSystem(ws, msg);
         break;
       case 'message':
         await this.handleChat(ws, msg);
@@ -127,6 +143,29 @@ export class AIServer {
     }
   }
 
+  private async handleSystem(ws: WebSocket, msg: any): Promise<void> {
+    const content = msg.content as string;
+    const conversationId = msg.conversationId as string;
+
+    if (!content) {
+      ws.send(JSON.stringify({ type: 'error', error: '系统消息内容不能为空' }));
+      return;
+    }
+
+    const conv = conversationId ? this.conversations.get(conversationId) : null;
+    if (!conv) {
+      ws.send(JSON.stringify({ type: 'error', error: '会话未初始化，请先发送 init 消息' }));
+      return;
+    }
+
+    // 清除旧的 system 消息，追加新的（确保 system 消息始终在对话最前面）
+    conv.messages = conv.messages.filter((m) => m.role !== 'system');
+    conv.messages.unshift({ role: 'system', content });
+    conv.updatedAt = Date.now();
+
+    ws.send(JSON.stringify({ type: 'system_ok' }));
+  }
+
   private async handleChat(ws: WebSocket, msg: any): Promise<void> {
     const content = msg.content as string;
     const conversationId = msg.conversationId as string;
@@ -153,7 +192,7 @@ export class AIServer {
       const messagesToSend = truncateMessages(conv.messages);
 
       // 流式输出
-      await provider.chatStream(conv.messages, (event: StreamEvent) => {
+      await provider.chatStream(messagesToSend, (event: StreamEvent) => {
         ws.send(JSON.stringify(event));
 
         // 收集 assistant 回复

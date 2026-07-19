@@ -12,7 +12,11 @@ import { readConfig, writeConfig, getConfigPath } from './config-store';
 
 const chalk = require('chalk');
 const inquirer = require('inquirer');
-const ora = require('ora');
+
+// Windows 下确保 stdout 使用 UTF-8 编码，防止中文乱码
+if (process.platform === 'win32') {
+  process.stdout.setDefaultEncoding?.('utf-8');
+}
 
 const VERSION = '1.0.0';
 
@@ -71,26 +75,44 @@ async function promptConfig(): Promise<ModelConfig> {
 
 const DEFAULT_PORT = 3210;
 
-async function startServer(config: ModelConfig): Promise<string> {
-  const spinner = ora('启动 AI 服务器...').start();
+async function findAvailablePort(startPort: number, maxAttempts = 10): Promise<number> {
+  return new Promise((resolve, reject) => {
+    let port = startPort;
+    const tryPort = () => {
+      const server = require('net').createServer();
+      server.once('error', (err: any) => {
+        if (err.code === 'EADDRINUSE' && port < startPort + maxAttempts) {
+          port++;
+          server.close(() => tryPort());
+        } else {
+          reject(new Error(`端口 ${startPort}~${startPort + maxAttempts} 均被占用，请释放端口后重试`));
+        }
+      });
+      server.once('listening', () => {
+        server.close(() => resolve(port));
+      });
+      server.listen(port, '127.0.0.1');
+    };
+    tryPort();
+  });
+}
 
+async function startServer(config: ModelConfig): Promise<string> {
   try {
+    const port = await findAvailablePort(DEFAULT_PORT);
     const serverConfig = {
       model: config,
-      port: DEFAULT_PORT,
+      port,
       host: '127.0.0.1',
     };
 
-    const server = new AIServer(serverConfig);
-    // 等待 server 真正监听完成（事件驱动，不再硬编码延迟）
+    const server = new AIServer(serverConfig, true);
     await server.ready;
-    spinner.succeed(chalk.green(`服务器启动: ws://127.0.0.1:${DEFAULT_PORT}`));
 
-    return `ws://127.0.0.1:${DEFAULT_PORT}`;
+    return `ws://127.0.0.1:${port}`;
   } catch (err) {
-    spinner.fail('服务器启动失败');
-    console.error(err);
-    process.exit(1);
+    console.error(chalk.red(`服务器启动失败: ${err instanceof Error ? err.message : String(err)}`));
+    throw err;
   }
 }
 
@@ -216,8 +238,8 @@ async function interactiveREPL(client: ServerClient, config: ModelConfig): Promi
 - 执行命令前说明意图
 - 保持回答简洁专业`;
 
-  // 发送系统提示
-  client.send({ type: 'message', content: systemPrompt });
+  // 发送系统提示（使用专门的 system 消息类型，不走对话历史计数）
+  client.send({ type: 'system', content: systemPrompt });
   await new Promise((r) => setTimeout(r, 1000));
 
   // 交互式输入循环
@@ -283,7 +305,7 @@ ${chalk.bold('当前模型配置:')}
       }
 
       if (input === '/reset') {
-        client.send({ type: 'reset', conversationId: (client as any).conversationId });
+        client.send({ type: 'reset', conversationId: client.getConversationId() });
         console.log(`\n${chalk.green('✓')} 对话已重置\n`);
         continue;
       }
@@ -404,19 +426,22 @@ async function main() {
     serverUrl = opts.server;
     console.log(chalk.dim(`连接已有服务器: ${serverUrl}`));
   } else {
-    serverUrl = await startServer(config);
+    try {
+      serverUrl = await startServer(config);
+    } catch {
+      console.log(chalk.dim('使用 --server 参数可连接已有服务器'));
+      process.exit(1);
+    }
   }
 
   // 连接服务器
-  const client = new ServerClient();
-  const spinner = ora('连接到服务器...').start();
+  const client = new ServerClient(true);
 
   try {
     await client.connect(serverUrl);
-    spinner.succeed('连接成功');
   } catch (err) {
-    spinner.fail('连接失败');
-    console.error(err);
+    console.error(chalk.red(`连接失败: ${err instanceof Error ? err.message : String(err)}`));
+    console.log(chalk.dim('提示: 请检查服务器是否在运行'));
     process.exit(1);
   }
 
@@ -425,10 +450,12 @@ async function main() {
 
   // 清理
   client.close();
-  process.exit(0);
+  console.log(chalk.dim('\n再见！'));
 }
 
 main().catch((err) => {
-  console.error(chalk.red('启动失败:'), err);
-  process.exit(1);
+  console.error(chalk.red('启动失败:'), err instanceof Error ? err.message : String(err));
+  if (err instanceof Error && err.stack) {
+    console.error(chalk.dim(err.stack.split('\n').slice(1).join('\n')));
+  }
 });
