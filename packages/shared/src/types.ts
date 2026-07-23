@@ -63,6 +63,8 @@ export interface ServerConfig {
   port?: number;
   host?: string;
   cwd?: string;
+  allowShell?: boolean;
+  allowGitCommit?: boolean;
 }
 
 // --- CLI 配置 ---

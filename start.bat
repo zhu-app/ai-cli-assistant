@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 title AI CLI Assistant
 cd /d %~dp0
 

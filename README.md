@@ -94,6 +94,8 @@ ai-cli   # 在任何目录都能运行
 | `-u, --url <url>` | 自定义 Base URL | - |
 | `-s, --server <url>` | 连接已有服务器 | - |
 | `-c, --cwd <path>` | 工作目录 | 当前目录 |
+| `--allow-shell` | 允许 AI 在工作区内执行 Shell 命令 | 关闭 |
+| `--allow-git-commit` | 允许 AI 创建 Git 提交 | 关闭 |
 | `--save` | 保存配置到全局 `~/.ai-cli.json` | - |
 | `--save-project` | 保存配置到项目 `.ai-cli.json` | - |
 
@@ -101,7 +103,8 @@ ai-cli   # 在任何目录都能运行
 
 ## MCP 工具
 
-AI 可通过以下 11 个工具操作本地环境：
+项目包含以下 11 个工具。默认暴露 9 个低风险工具，`git_commit` 和
+`shell_exec` 需要通过命令行参数显式启用：
 
 | 类别 | 工具 | 说明 |
 |------|------|------|
@@ -113,9 +116,16 @@ AI 可通过以下 11 个工具操作本地环境：
 | **Git** | `git_status` | 查看工作区状态 |
 | | `git_log` | 查看提交历史 |
 | | `git_diff` | 查看差异 |
-| | `git_commit` | 提交更改 |
-| **终端** | `shell_exec` | 执行 Shell 命令（含危险命令黑名单） |
+| | `git_commit` | 提交更改（需 `--allow-git-commit`） |
+| **终端** | `shell_exec` | 执行 Shell 命令（需 `--allow-shell`） |
 | | `grep_search` | 正则搜索文件内容 |
+
+文件、搜索和 Git 路径均限制在 `--cwd` 指定的工作区内，并检查路径穿越与
+符号链接逃逸。服务端只监听本机回环地址，不提供公网监听。
+
+`--allow-shell` 是明确的高风险开关：Shell 仅以工作区作为当前目录，但命令
+仍拥有当前操作系统用户的权限，可以访问工作区之外的位置。只应在可信项目中
+临时启用。`git_commit` 默认关闭，执行时会禁用 Git hooks、外部 diff 和自动签名。
 
 ---
 
@@ -148,14 +158,14 @@ ai-cli-assistant/
 ## 测试
 
 ```bash
-# 运行全部测试（29 个）
+# 构建并运行全部测试（包含安全边界和 UTF-8 检查）
 npm test
 
 # 单独测试某个包
-npm run test -w @ai-cli/shared
-npm run test -w @ai-cli/tools
-npm run test -w @ai-cli/server
-npm run test -w @ai-cli/cli
+npm --prefix packages/shared test
+npm --prefix packages/tools test
+npm --prefix packages/server test
+npm --prefix packages/cli test
 ```
 
 ## npm Scripts
@@ -164,7 +174,9 @@ npm run test -w @ai-cli/cli
 |------|------|
 | `npm run build` | 编译所有包 |
 | `npm run dev` | 开发模式（监听文件变更） |
+| `npm run lint` | 运行全部 TypeScript 静态检查 |
 | `npm test` | 运行全部测试 |
+| `npm run test:encoding` | 检查仓库文本文件是否为有效 UTF-8 |
 | `npm run fix-links` | 修复 workspace 链接 |
 | `npm run rebuild` | 修复链接 + 重新构建 |
 | `npm run clean` | 清理构建产物 |
@@ -174,3 +186,5 @@ npm run test -w @ai-cli/cli
 - **端口冲突**：默认端口 3210 被占用时，自动切换到下一个可用端口
 - **项目搬家**：直接运行 `start.bat` 或 `fix-links.bat`，自动修复链接
 - **API Key 安全**：`.ai-cli.json` 已加入 `.gitignore`，不会上传到 GitHub
+- **高风险工具**：Shell 和 Git 提交默认关闭，只在明确需要时临时启用
+- **Windows 中文**：`start.bat` 会将终端代码页切换为 UTF-8

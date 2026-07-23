@@ -1,5 +1,6 @@
 # 依赖
 node_modules/
+.npm-cache/
 
 # 构建产物
 packages/*/dist/

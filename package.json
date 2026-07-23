@@ -6,11 +6,13 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @ai-cli/shared && npm run build -w @ai-cli/tools && npm run build -w @ai-cli/server && npm run build -w @ai-cli/cli",
-    "dev": "npm run dev --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run build -w @ai-cli/shared && npm run build -w @ai-cli/tools && npm run build -w @ai-cli/server && npm run test --workspaces --if-present",
-    "clean": "npm run clean --workspaces --if-present && node -e \"require('fs').rmSync('node_modules',{recursive:true,force:true})\"",
+    "prebuild": "node scripts/link-workspaces.cjs",
+    "build": "npm --prefix packages/shared run build && npm --prefix packages/tools run build && npm --prefix packages/server run build && npm --prefix packages/cli run build",
+    "dev": "npm --prefix packages/cli run dev",
+    "lint": "npm --prefix packages/shared run lint && npm --prefix packages/tools run lint && npm --prefix packages/server run lint && npm --prefix packages/cli run lint",
+    "test": "npm run build && npm --prefix packages/shared test && npm --prefix packages/tools test && npm --prefix packages/server test && npm --prefix packages/cli test && npm run test:encoding",
+    "test:encoding": "node scripts/check-utf8.cjs",
+    "clean": "npm --prefix packages/shared run clean && npm --prefix packages/tools run clean && npm --prefix packages/server run clean && npm --prefix packages/cli run clean && node -e \"require('fs').rmSync('node_modules',{recursive:true,force:true})\"",
     "fix-links": "node -e \"var fs=require('fs'),path=require('path');var p=path.resolve('node_modules/@ai-cli');if(!fs.existsSync(p)){console.log('OK - no links to fix');process.exit(0)}var b=false;fs.readdirSync(p).forEach(function(d){var t=path.join(p,d);try{fs.accessSync(path.join(t,'package.json'))}catch(e){console.log('Broken: @ai-cli/'+d);fs.rmSync(t,{recursive:true,force:true});b=true}});if(b){console.log('Fixing links...');require('child_process').execSync('npm install --no-fund --no-audit --install-strategy=nested',{stdio:'inherit',cwd:__dirname})}else{console.log('All workspace links are OK')}\"",
     "rebuild": "npm run fix-links && npm run build"
   },

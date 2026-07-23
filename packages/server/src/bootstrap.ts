@@ -10,6 +10,8 @@ const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6';
 const API_KEY = process.env.AI_API_KEY || '';
 const BASE_URL = process.env.AI_BASE_URL || '';
 const PORT = parseInt(process.env.SERVER_PORT || '3210', 10);
+const ALLOW_SHELL = process.env.AI_CLI_ALLOW_SHELL === '1';
+const ALLOW_GIT_COMMIT = process.env.AI_CLI_ALLOW_GIT_COMMIT === '1';
 
 const config: ServerConfig = {
   model: {
@@ -21,6 +23,10 @@ const config: ServerConfig = {
     temperature: 0.3,
   },
   port: PORT,
+  host: '127.0.0.1',
+  cwd: process.cwd(),
+  allowShell: ALLOW_SHELL,
+  allowGitCommit: ALLOW_GIT_COMMIT,
 };
 
 console.log('[ai-cli-assistant] 启动服务器...');

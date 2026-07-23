@@ -71,7 +71,12 @@ export class ServerClient {
       throw new Error('未连接到服务器');
     }
     const msg: CLICommand & { conversationId?: string } = { ...cmd };
-    if (this.conversationId && (cmd.type === 'message' || cmd.type === 'init' || cmd.type === 'reset')) {
+    if (this.conversationId && (
+      cmd.type === 'message' ||
+      cmd.type === 'system' ||
+      cmd.type === 'init' ||
+      cmd.type === 'reset'
+    )) {
       msg.conversationId = this.conversationId;
     }
     this.ws.send(JSON.stringify(msg));

@@ -97,13 +97,19 @@ async function findAvailablePort(startPort: number, maxAttempts = 10): Promise<n
   });
 }
 
-async function startServer(config: ModelConfig): Promise<string> {
+async function startServer(
+  config: ModelConfig,
+  options: { allowShell: boolean; allowGitCommit: boolean }
+): Promise<string> {
   try {
     const port = await findAvailablePort(DEFAULT_PORT);
     const serverConfig = {
       model: config,
       port,
       host: '127.0.0.1',
+      cwd: process.cwd(),
+      allowShell: options.allowShell,
+      allowGitCommit: options.allowGitCommit,
     };
 
     const server = new AIServer(serverConfig, true);
@@ -382,6 +388,8 @@ async function main() {
     .option('-u, --url <url>', '自定义 Base URL')
     .option('-s, --server <url>', '连接已有服务器 (ws://...)')
     .option('-c, --cwd <path>', '工作目录', process.cwd())
+    .option('--allow-shell', '允许 AI 在工作区内执行 Shell 命令')
+    .option('--allow-git-commit', '允许 AI 创建 Git 提交')
     .option('--save', '保存配置到全局 ~/.ai-cli.json')
     .option('--save-project', '保存配置到项目 .ai-cli.json（推荐）');
 
@@ -427,7 +435,10 @@ async function main() {
     console.log(chalk.dim(`连接已有服务器: ${serverUrl}`));
   } else {
     try {
-      serverUrl = await startServer(config);
+      serverUrl = await startServer(config, {
+        allowShell: opts.allowShell === true,
+        allowGitCommit: opts.allowGitCommit === true,
+      });
     } catch {
       console.log(chalk.dim('使用 --server 参数可连接已有服务器'));
       process.exit(1);
